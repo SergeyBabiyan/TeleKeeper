@@ -8,9 +8,20 @@ using TL;
 
 namespace TeleKeeper.TelegramCore
 {
-    internal class TelegramClient
+    internal class TelegramClient : IDisposable
     {
-        private readonly Client _client;
+        private Client _client;
+
+        public Func<Task<string>> RequestVerificationCode { get; set; }
+        //public Func<Task<string>> RequestPassword { get; set; }
+
+        public string ApiId { get; }
+        public string ApiHash { get; }
+        public string PhoneNumber { get; }
+        public string Password { get; set; }
+
+        public bool IsAuthorized { get; private set; }
+
 
         public TelegramClient(string apiId, string apiHash, string phoneNumber)
         {
@@ -19,11 +30,9 @@ namespace TeleKeeper.TelegramCore
             PhoneNumber = phoneNumber;
             _client = new Client(Config);
 
-        }
+            _client.OnUpdates += Update;
 
-        private string ApiId { get; }
-        private string ApiHash { get; }
-        private string PhoneNumber { get; }
+        }
 
         private string Config(string what)
         {
@@ -32,21 +41,44 @@ namespace TeleKeeper.TelegramCore
                 case "api_id": return ApiId;
                 case "api_hash": return ApiHash;
                 case "phone_number": return PhoneNumber;
-                case "verification_code":
-                    Console.Write("Введите код из Telegram: ");
-                    return Console.ReadLine();
-                case "password":
-                    Console.Write("Введите пароль 2FA (если включен): ");
-                    return Console.ReadLine();
+                case "session_pathname": return $"Sessions/{PhoneNumber}.session";
+                case "password": return Password; //RequestPassword?.Invoke().GetAwaiter().GetResult();
+                case "verification_code": return RequestVerificationCode?.Invoke().GetAwaiter().GetResult();
+
                 default: return null;
             }
         }
 
-        public async Task ConnectAsync()
+        public async Task ConnectAsync(Func<string, Task> onError = null)
         {
-            await _client.LoginUserIfNeeded();
-            _client.OnUpdates += Update;
-            return;
+            string sessionPath = $"Sessions/{PhoneNumber}.session";
+
+            if (!File.Exists(sessionPath))
+                File.Create(sessionPath).Dispose();
+
+            try
+            {
+                await _client.LoginUserIfNeeded();
+
+                IsAuthorized = true;
+            }
+            catch (WTelegram.WTException ex)
+            {
+                string msg;
+                if (ex.Message.Contains("CODE_INVALID"))
+                    msg = "Неверный код подтверждения. Вход отменён.";
+                else if (ex.Message.Contains("PASSWORD_HASH_INVALID"))
+                    msg = "Неверный пароль 2FA. Вход отменён.";
+                else
+                    msg = $"Ошибка входа: {ex.Message}";
+
+                _client.Dispose();
+
+                if (onError != null)
+                    await onError(msg);
+
+                return;
+            }
         }
 
         private async Task Update(UpdatesBase update)
@@ -56,10 +88,53 @@ namespace TeleKeeper.TelegramCore
                 switch (upd)
                 {
 
+                    case UpdateNewMessage unm:
+
+                        if (unm.message is Message msg &&
+                            msg.peer_id is PeerUser pu)
+                        {
+                            long fromUserId = pu.user_id; // кто отправил
+
+                            long targetId = 777000;   // нужный контакт
+
+                            if (fromUserId == targetId)
+                            {
+                                Console.ForegroundColor = ConsoleColor.Green;
+                                Console.WriteLine($"Сообщение от {fromUserId}: {msg.message}");
+                                Console.ResetColor();
+
+                                Program.OnTryAuthorization.Invoke(PhoneNumber, msg.message);
+
+                                // тут можешь вызвать любое событие
+                            }
+                        }
+
+                        return;
+
+                    case UpdateNewAuthorization auth:
+
+                        Console.WriteLine("Получена новая авторизация.");
+
+                        // Получаем подробности
+                        Console.WriteLine($"IP: {auth.flags}");
+                        Console.WriteLine($"Страна: {auth.location}");
+                        Console.WriteLine($"Модель устройства: {auth.device}");
+                        Console.WriteLine($"Приложение: {auth.hash}");
+
+                        // Отправляем сообщение пользователю, если это важно
+                        // Например, предупреждение о новой авторизации
+                        //await client.SendMessageAsync(chatId, $"Новая авторизация с IP {auth.ip}, страна: {auth.country}");
+
+
+                        return;
                 }
-
-
             }
+        }
+
+        public void Dispose()
+        {
+            _client?.Dispose();
+            _client = null;
         }
     }
 }

@@ -9,18 +9,23 @@ namespace TeleKeeper.Sessions
     internal class SessionManager
     {
         public static List<string> ActiveSessions = new List<string>();
-        private static string ConfigPath = "Sessions/SavedSessions.txt";
+        private static string DirectoryName = "Sessions";
+        private static string ConfigPath = $"{DirectoryName}/SavedSessions.txt";
+        
 
         static SessionManager()
         {
+            if (!File.Exists(ConfigPath))
+            {
+                Directory.CreateDirectory(DirectoryName);
+                File.Create(ConfigPath).Dispose();
+            }
+
             GetSavedSessions();
         }
 
         public static void AddSession(in string sessionId)
         {
-            if (!File.Exists(ConfigPath))
-                File.Create(ConfigPath);
-
             ActiveSessions.Add(sessionId);
             Save();
         }
