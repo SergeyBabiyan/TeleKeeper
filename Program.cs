@@ -160,10 +160,18 @@ class Program
                 {
                     case "AddSession":
 
+                        if (AwaitingPhoneNumber.Contains(chatId) || AwaitingPassword.ContainsKey(chatId) || AwaitingVerificationCode.ContainsKey(chatId))
+                        {
+                            await client.SendMessage(chatId,
+                                                     "⚠️Попытка отклонена \nПричина: Вы уже создаете сессию");
+                            return;
+                        }
+
                         await client.SendMessage(chatId,
                                                  "Напишите номер телефона");
 
                         AwaitingPhoneNumber.Add(chatId);
+
 
                         return;
 

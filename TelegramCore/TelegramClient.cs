@@ -73,6 +73,8 @@ namespace TeleKeeper.TelegramCore
                     msg = $"Ошибка входа: {ex.Message}";
 
                 _client.Dispose();
+                if(File.Exists(sessionPath))
+                    File.Delete(sessionPath);
 
                 if (onError != null)
                     await onError(msg);
