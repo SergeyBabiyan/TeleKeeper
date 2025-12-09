@@ -9,7 +9,7 @@ namespace TeleKeeper.Sessions
     internal class SessionManager
     {
         public static List<string> ActiveSessions = new List<string>();
-        private static string DirectoryName = AppContext.BaseDirectory + "Sessions";
+        public static string DirectoryName = AppContext.BaseDirectory + "Sessions";
         private static string ConfigPath = $"{DirectoryName}/SavedSessions.txt";
         
 
@@ -37,7 +37,7 @@ namespace TeleKeeper.Sessions
             ActiveSessions.Remove(sessionId);
             Save();
 
-            File.Delete($"Sessions/{sessionId}.session");
+            File.Delete($"{DirectoryName}/{sessionId}.session");
         }
 
         private static void GetSavedSessions()

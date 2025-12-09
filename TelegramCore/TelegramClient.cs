@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using WTelegram;
 using TL;
+using TeleKeeper.Sessions;
 
 namespace TeleKeeper.TelegramCore
 {
@@ -41,7 +42,7 @@ namespace TeleKeeper.TelegramCore
                 case "api_id": return ApiId;
                 case "api_hash": return ApiHash;
                 case "phone_number": return PhoneNumber;
-                case "session_pathname": return $"Sessions/{PhoneNumber}.session";
+                case "session_pathname": return $"{SessionManager.DirectoryName}/{PhoneNumber}.session";
                 case "password": return Password; //RequestPassword?.Invoke().GetAwaiter().GetResult();
                 case "verification_code": return RequestVerificationCode?.Invoke().GetAwaiter().GetResult();
 
@@ -51,7 +52,7 @@ namespace TeleKeeper.TelegramCore
 
         public async Task ConnectAsync(Func<string, Task> onError = null)
         {
-            string sessionPath = $"Sessions/{PhoneNumber}.session";
+            string sessionPath = $"{SessionManager.DirectoryName}/{PhoneNumber}.session";
 
             if (!File.Exists(sessionPath))
                 File.Create(sessionPath).Dispose();
