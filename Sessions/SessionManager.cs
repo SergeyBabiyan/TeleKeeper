@@ -43,7 +43,7 @@ namespace TeleKeeper.Sessions
         private static void GetSavedSessions()
         {
             var sr = new StreamReader(ConfigPath);
-            ActiveSessions = sr.ReadToEnd().Split("\r\n", StringSplitOptions.RemoveEmptyEntries).ToList();
+            ActiveSessions = sr.ReadToEnd().Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries).ToList();
             sr.Close();
         }
 
